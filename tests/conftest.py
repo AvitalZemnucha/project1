@@ -1,8 +1,4 @@
-import os
 import pytest
-import json
-import requests
-import psycopg2
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.firefox.service import Service as FirefoxService
@@ -10,9 +6,12 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
+import os
+import json
+import requests
+import psycopg2
 
 
-# Config fixture to load configuration from JSON or default
 @pytest.fixture(scope="session")
 def config():
     config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'config', 'qa_config.json')
@@ -31,7 +30,6 @@ def config():
     return config
 
 
-# Driver fixture for Chrome and Firefox with headless support and version pinning for ChromeDriver in Jenkins
 @pytest.fixture
 def driver(config):
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()
@@ -50,11 +48,8 @@ def driver(config):
         options.add_argument("--disable-dev-shm-usage")
 
         try:
-            # Pinning ChromeDriver version for Jenkins and using the latest for local
-            if os.environ.get('CI', '') == 'true':  # Jenkins environment
-                driver_path = ChromeDriverManager(version="132.0.6834").install()  # Stable version for Jenkins
-            else:  # Local environment
-                driver_path = ChromeDriverManager().install()  # Latest version for local
+            # Automatically fetch the latest ChromeDriver version
+            driver_path = ChromeDriverManager().install()  # Use the latest version for both Jenkins and local
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
         except Exception as e:
@@ -88,7 +83,6 @@ def driver(config):
     driver.quit()
 
 
-# Logged in driver fixture
 @pytest.fixture
 def logged_in_driver(driver):
     from project1.pages.login_page import LoginPage
@@ -103,7 +97,6 @@ def logged_in_driver(driver):
     return driver
 
 
-# API client fixture
 @pytest.fixture
 def api_client():
     from project1.config.config import TestConfig
@@ -117,7 +110,6 @@ def api_client():
     return session
 
 
-# Database connection fixture
 @pytest.fixture
 def db_connection():
     from project1.config.config import TestConfig
@@ -127,7 +119,6 @@ def db_connection():
     conn.close()
 
 
-# Custom command-line option for environment selection
 def pytest_addoption(parser):
     parser.addoption(
         "--env",
@@ -137,7 +128,6 @@ def pytest_addoption(parser):
     )
 
 
-# Test environment fixture (session scoped)
 @pytest.fixture(scope="session")
 def test_environment(request):
     return request.config.getoption("--env")
