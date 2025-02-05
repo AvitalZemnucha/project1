@@ -44,13 +44,13 @@ def driver(config):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        # Use Jenkins CHROMEDRIVER_VERSION if set, otherwise use latest
-        chromedriver_version = os.getenv("CHROMEDRIVER_VERSION", None)
+        # Set a fallback for chromedriver version if Jenkins doesn't provide one
+        chromedriver_version = os.getenv("CHROMEDRIVER_VERSION", "latest")
 
-        if chromedriver_version:
-            driver_path = ChromeDriverManager().install()
-        else:
-            driver_path = ChromeDriverManager().install()
+        print(f"Using ChromeDriver version: {chromedriver_version}")
+
+        # Corrected usage of ChromeDriverManager without 'version' argument
+        driver_path = ChromeDriverManager().install()
 
         driver = webdriver.Chrome(service=ChromeService(driver_path), options=options)
 
