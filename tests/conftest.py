@@ -32,8 +32,8 @@ def config():
 @pytest.fixture
 def driver(config):
     """
-       Initialize a WebDriver instance based on the browser specified in the environment variable.
-       """
+     Initialize a WebDriver instance based on the browser specified in the environment variable.
+     """
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()  # Ensure no extra spaces
     headless = os.environ.get('HEADLESS', 'false').strip().lower() == 'true'
 
@@ -46,12 +46,20 @@ def driver(config):
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+
+        # Fetch ChromeDriver compatible with your local Chrome version
+        driver = webdriver.Chrome(
+            service=ChromeService(ChromeDriverManager().install()), options=options
+        )
+
     elif browser == "firefox":
-        options = FirefoxOptions()
+        from selenium.webdriver.firefox.service import Service as FirefoxService
+        from webdriver_manager.firefox import GeckoDriverManager
+        options = webdriver.FirefoxOptions()
         if headless:
             options.add_argument("--headless")
         driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
+
     else:
         raise ValueError(f"Unsupported browser: {browser}")
 
