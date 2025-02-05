@@ -49,38 +49,25 @@ def driver(config):
 
         try:
             # Automatically fetch the latest ChromeDriver version
-            driver_path = ChromeDriverManager().install()  # Use the latest version for both Jenkins and local
+            # Optionally, specify a version by passing version='your_version_here'
+            try:
+                driver_path = ChromeDriverManager().install()  # Fetch latest compatible version
+            except WebDriverManagerException as e:
+                print(f"Failed to fetch ChromeDriver: {str(e)}")
+                # Optionally, specify a fallback version if the latest fails
+                driver_path = ChromeDriverManager(
+                    version="112.0.5615.49").install()  # Replace with your correct version
+
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
+            return driver
+
         except Exception as e:
             print(f"ChromeDriver setup failed: {str(e)}")
             raise RuntimeError(f"Chrome WebDriver initialization error: {str(e)}")
 
-    elif browser == "firefox":
-        options = FirefoxOptions()
-        if headless:
-            options.add_argument("--headless")
-
-        try:
-            driver = webdriver.Firefox(
-                service=FirefoxService(GeckoDriverManager().install()),
-                options=options
-            )
-        except Exception as e:
-            print(f"FirefoxDriver setup failed: {str(e)}")
-            raise RuntimeError(f"Firefox WebDriver initialization error: {str(e)}")
-
     else:
         raise ValueError(f"Unsupported browser: {browser}")
-
-    # Set window size from config
-    driver.set_window_size(
-        config['browser']['window_size']['width'],
-        config['browser']['window_size']['height']
-    )
-
-    yield driver
-    driver.quit()
 
 
 @pytest.fixture
