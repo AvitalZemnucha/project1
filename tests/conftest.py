@@ -32,8 +32,8 @@ def config():
 @pytest.fixture
 def driver(config):
     """
-     Initialize a WebDriver instance based on the browser specified in the environment variable.
-     """
+    Initialize a WebDriver instance based on the browser specified in the environment variable.
+    """
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()  # Ensure no extra spaces
     headless = os.environ.get('HEADLESS', 'false').strip().lower() == 'true'
 
@@ -53,9 +53,7 @@ def driver(config):
         )
 
     elif browser == "firefox":
-        from selenium.webdriver.firefox.service import Service as FirefoxService
-        from webdriver_manager.firefox import GeckoDriverManager
-        options = webdriver.FirefoxOptions()
+        options = FirefoxOptions()
         if headless:
             options.add_argument("--headless")
         driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
