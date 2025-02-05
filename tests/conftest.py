@@ -25,13 +25,22 @@ logging.basicConfig(
 def config():
     config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'config', 'qa_config.json')
     with open(config_path) as config_file:
-        return json.load(config_file)
+        config = json.load(config_file)
+
+    # Override 'headless' setting based on environment
+    if os.environ.get('CI', '') == 'true':  # Jenkins environment
+        config['browser']['headless'] = True
+    else:
+        config['browser']['headless'] = False  # Local environment
+
+    return config
 
 
 @pytest.fixture
 def driver(config):
     chrome_options = Options()
 
+    # Set headless mode based on the config
     if config['browser']['headless']:
         chrome_options.add_argument("--headless")
 
@@ -49,7 +58,7 @@ def driver(config):
         config['browser']['window_size']['width'],
         config['browser']['window_size']['height']
     )
-    driver.implicitly_wait(TestConfig.IMPLICIT_WAIT)
+    driver.implicitly_wait(10)
 
     yield driver
     driver.quit()
