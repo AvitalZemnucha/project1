@@ -31,15 +31,10 @@ def config():
 
 @pytest.fixture
 def driver(config):
-    """
-    Initialize a WebDriver instance based on the browser specified in the environment variable.
-    Uses a fixed ChromeDriver version in Jenkins to avoid mismatches.
-    Uses the latest ChromeDriver locally.
-    """
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()
     headless = os.environ.get('HEADLESS', 'false').strip().lower() == 'true'
 
-    print(f"Running tests on {browser} with headless={headless}")  # Debug print
+    print(f"Running tests on {browser} with headless={headless}")
 
     if browser == "chrome":
         options = ChromeOptions()
@@ -50,9 +45,10 @@ def driver(config):
         options.add_argument("--disable-dev-shm-usage")
 
         if os.environ.get('CI', '') == 'true':  # Running in Jenkins
-            chrome_driver_path = r"C:\Users\avita\.jenkins\chromedriver.exe"  # Set your correct path
-            driver = webdriver.Chrome(service=ChromeService(chrome_driver_path), options=options)
+            # Use Selenium Manager to automatically download and manage ChromeDriver
+            driver = webdriver.Chrome(options=options)
         else:  # Running locally
+            # Use WebDriver Manager to get the latest ChromeDriver
             driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
     elif browser == "firefox":
