@@ -33,6 +33,8 @@ def config():
 def driver(config):
     """
     Initialize a WebDriver instance based on the browser specified in the environment variable.
+    Uses a fixed ChromeDriver version in Jenkins to avoid mismatches.
+    Uses the latest ChromeDriver locally.
     """
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()  # Ensure no extra spaces
     headless = os.environ.get('HEADLESS', 'false').strip().lower() == 'true'
@@ -47,10 +49,11 @@ def driver(config):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        # Fetch ChromeDriver compatible with your local Chrome version
-        driver = webdriver.Chrome(
-            service=ChromeService(ChromeDriverManager().install()), options=options
-        )
+        if os.environ.get('CI', '') == 'true':  # Running in Jenkins
+            chrome_driver_path = "/usr/bin/chromedriver"  # Set to pre-installed path in Jenkins
+            driver = webdriver.Chrome(service=ChromeService(chrome_driver_path), options=options)
+        else:  # Running locally
+            driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
     elif browser == "firefox":
         options = FirefoxOptions()
@@ -71,6 +74,7 @@ def logged_in_driver(driver):
     """
     from project1.pages.login_page import LoginPage
     from project1.constant import VALID_USER, VALID_PASSWORD
+    from project1.config.config import TestConfig
 
     driver.get(f"{TestConfig.BASE_URL}/login")
     login_page = LoginPage(driver)
