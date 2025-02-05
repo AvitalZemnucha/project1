@@ -16,6 +16,7 @@ def config():
     Load configuration settings from a JSON file and override headless mode if running in CI (Jenkins).
     """
     config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'config', 'qa_config.json')
+    print(f"Loading config from: {config_path}")  # Debug print
     with open(config_path) as config_file:
         config = json.load(config_file)
 
@@ -35,6 +36,8 @@ def driver(config):
     """
     browser = os.environ.get('BROWSER', 'chrome').lower()
     headless = os.environ.get('HEADLESS', 'false').lower() == 'true'
+
+    print(f"Running tests on {browser} with headless={headless}")  # Debug print
 
     if browser == "chrome":
         options = ChromeOptions()
