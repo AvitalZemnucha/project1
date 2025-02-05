@@ -6,6 +6,7 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
+
 import os
 import json
 import requests
@@ -52,7 +53,7 @@ def driver(config):
             # Optionally, specify a version by passing version='your_version_here'
             try:
                 driver_path = ChromeDriverManager().install()  # Fetch latest compatible version
-            except WebDriverManagerException as e:
+            except ValueError as e:  # Catch ValueError when there's an issue with the driver version
                 print(f"Failed to fetch ChromeDriver: {str(e)}")
                 # Optionally, specify a fallback version if the latest fails
                 driver_path = ChromeDriverManager(
@@ -65,9 +66,6 @@ def driver(config):
         except Exception as e:
             print(f"ChromeDriver setup failed: {str(e)}")
             raise RuntimeError(f"Chrome WebDriver initialization error: {str(e)}")
-
-    else:
-        raise ValueError(f"Unsupported browser: {browser}")
 
 
 @pytest.fixture
