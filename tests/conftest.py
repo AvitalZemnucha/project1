@@ -32,10 +32,10 @@ def config():
 @pytest.fixture
 def driver(config):
     """
-    Initialize a WebDriver instance based on the browser specified in the environment variable.
-    """
-    browser = os.environ.get('BROWSER', 'chrome').lower()
-    headless = os.environ.get('HEADLESS', 'false').lower() == 'true'
+       Initialize a WebDriver instance based on the browser specified in the environment variable.
+       """
+    browser = os.environ.get('BROWSER', 'chrome').strip().lower()  # Ensure no extra spaces
+    headless = os.environ.get('HEADLESS', 'false').strip().lower() == 'true'
 
     print(f"Running tests on {browser} with headless={headless}")  # Debug print
 
@@ -55,14 +55,7 @@ def driver(config):
     else:
         raise ValueError(f"Unsupported browser: {browser}")
 
-    driver.set_window_size(
-        config['browser']['window_size']['width'],
-        config['browser']['window_size']['height']
-    )
-    driver.implicitly_wait(10)
-
-    yield driver
-    driver.quit()
+    return driver
 
 
 @pytest.fixture
