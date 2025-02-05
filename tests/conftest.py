@@ -36,7 +36,7 @@ def driver(config):
     Uses a fixed ChromeDriver version in Jenkins to avoid mismatches.
     Uses the latest ChromeDriver locally.
     """
-    browser = os.environ.get('BROWSER', 'chrome').strip().lower()  # Ensure no extra spaces
+    browser = os.environ.get('BROWSER', 'chrome').strip().lower()
     headless = os.environ.get('HEADLESS', 'false').strip().lower() == 'true'
 
     print(f"Running tests on {browser} with headless={headless}")  # Debug print
@@ -50,7 +50,7 @@ def driver(config):
         options.add_argument("--disable-dev-shm-usage")
 
         if os.environ.get('CI', '') == 'true':  # Running in Jenkins
-            chrome_driver_path = "/usr/bin/chromedriver"  # Set to pre-installed path in Jenkins
+            chrome_driver_path = r"C:\Users\avita\.jenkins\chromedriver.exe"  # Set your correct path
             driver = webdriver.Chrome(service=ChromeService(chrome_driver_path), options=options)
         else:  # Running locally
             driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
