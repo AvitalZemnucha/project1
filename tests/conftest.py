@@ -44,12 +44,8 @@ def driver(config):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
-        if os.environ.get('CI', '') == 'true':  # Running in Jenkins
-            # Use Selenium Manager to automatically download and manage ChromeDriver
-            driver = webdriver.Chrome(options=options)
-        else:  # Running locally
-            # Use WebDriver Manager to get the latest ChromeDriver
-            driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+        # Use WebDriver Manager to get the appropriate ChromeDriver
+        driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
     elif browser == "firefox":
         options = FirefoxOptions()
