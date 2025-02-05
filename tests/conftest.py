@@ -49,15 +49,8 @@ def driver(config):
         options.add_argument("--disable-dev-shm-usage")
 
         try:
-            # Automatically fetch the latest ChromeDriver version
-            # Optionally, specify a version by passing version='your_version_here'
-            try:
-                driver_path = ChromeDriverManager().install()  # Fetch latest compatible version
-            except ValueError as e:  # Catch ValueError when there's an issue with the driver version
-                print(f"Failed to fetch ChromeDriver: {str(e)}")
-                # Optionally, specify a fallback version if the latest fails
-                driver_path = ChromeDriverManager(
-                    version="112.0.5615.49").install()  # Replace with your correct version
+            # Let webdriver_manager automatically select the correct version
+            driver_path = ChromeDriverManager().install()
 
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
