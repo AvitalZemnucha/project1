@@ -1,0 +1,95 @@
+:<!-- templates/login.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Book Management System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            color: red;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid red;
+            background-color: #fff5f5;
+            border-radius: 4px;
+        }
+
+        .input-error {
+            border: 1px solid red;
+        }
+
+        input[type="text"], input[type="password"] {
+            padding: 8px;
+            width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<h1>Login</h1>
+{% if error %}
+<div class="error-message" id="error-message">{{ error }}</div>
+{% endif %}
+<form method="POST" id="login-form">
+    <div class="form-group">
+        <label for="username">Username:</label><br>
+        <input type="text" id="username" name="username"
+               class="{% if error and 'Username' in error %}input-error{% endif %}">
+    </div>
+    <div class="form-group">
+        <label for="password">Password:</label><br>
+        <input type="password" id="password" name="password"
+               class="{% if error and 'Password' in error %}input-error{% endif %}">
+    </div>
+    <button type="submit">Login</button>
+</form>
+
+<script>
+    // Client-side validation
+    document.getElementById('login-form').addEventListener('submit', function (e) {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const errorDiv = document.getElementById('error-message') ||
+            document.createElement('div');
+
+        errorDiv.className = 'error-message';
+
+        if (!username && !password) {
+            e.preventDefault();
+            errorDiv.textContent = 'Username and password are required';
+            if (!document.getElementById('error-message')) {
+                this.insertBefore(errorDiv, this.firstChild);
+            }
+        }
+    });
+</script>
+</body>
+</html>

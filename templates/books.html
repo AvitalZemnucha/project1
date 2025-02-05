@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 2rem auto;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #007bff;
+            color: white;
+        }
+        .actions button {
+            margin-left: 0.5rem;
+            padding: 0.5rem 1rem;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .edit-btn {
+            background: #28a745;
+            color: white;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .logout-btn, .add-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            color: white;
+        }
+        .logout-btn {
+            background: #6c757d;
+        }
+        .add-btn {
+            background: #007bff;
+        }
+        .form-modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-modal h2 {
+            margin-top: 0;
+        }
+        .form-modal input {
+            display: block;
+            width: 100%;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+        }
+        .form-modal button {
+            padding: 0.5rem 1rem;
+            margin-right: 0.5rem;
+        }
+        .alert {
+            color: red;
+            font-weight: bold;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Book Collection</h1>
+    <div>
+        <button id="add-book" class="add-btn" onclick="showAddForm()">Add New Book</button>
+        <a href="/logout">
+            <button id="logout" class="logout-btn">Logout</button>
+        </a>
+    </div>
+</div>
+
+<div id="book-form" class="form-modal">
+    <div class="form-content">
+        <h2 id="form-title">Add New Book</h2>
+        <p id="error-message" class="alert">Duplicate book detected! The book is already in the list.</p>
+        <form id="book-form-element">
+            <label>Title:</label>
+            <input type="text" id="book-title" required>
+            <label>Author:</label>
+            <input type="text" id="book-author" required>
+            <label>ISBN:</label>
+            <input type="text" id="book-isbn" required>
+            <button type="submit" id="save-book">Save</button>
+            <button type="button" id="cancel-book" onclick="closeForm()">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>Title</th>
+        <th>Author</th>
+        <th>ISBN</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody id="books-list">
+    {% for book in books %}
+    <tr data-id="{{ book.id }}">
+        <td>{{ book.title }}</td>
+        <td>{{ book.author }}</td>
+        <td>{{ book.isbn }}</td>
+        <td class="actions">
+            <button class="edit-btn"
+                    onclick="editBook('{{ book.id }}', '{{ book.title }}', '{{ book.author }}', '{{ book.isbn }}')">Edit
+            </button>
+            <button class="delete-btn" onclick="deleteBook({{ book.id }})">Delete</button>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+    let editingBookId = null;
+
+    async function deleteBook(bookId) {
+        if (confirm('Are you sure you want to delete this book?')) {
+            try {
+                const response = await fetch(`/api/books/${bookId}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) window.location.reload();
+            } catch (err) {
+                console.error('Delete error:', err);
+            }
+        }
+    }
+
+    function showAddForm() {
+        document.getElementById('form-title').textContent = 'Add New Book';
+        document.getElementById('book-title').value = '';
+        document.getElementById('book-author').value = '';
+        document.getElementById('book-isbn').value = '';
+        document.getElementById('error-message').style.display = 'none'; // Hide the error message
+        editingBookId = null;
+        document.getElementById('book-form').style.display = 'block';
+    }
+
+    function closeForm() {
+        document.getElementById('book-form').style.display = 'none';
+    }
+
+    function editBook(bookId, title, author, isbn) {
+        document.getElementById('form-title').textContent = 'Edit Book';
+        document.getElementById('book-title').value = title;
+        document.getElementById('book-author').value = author;
+        document.getElementById('book-isbn').value = isbn;
+        document.getElementById('error-message').style.display = 'none'; // Hide the error message
+        editingBookId = bookId;
+        document.getElementById('book-form').style.display = 'block';
+    }
+
+    document.getElementById('book-form-element').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const bookData = {
+            title: document.getElementById('book-title').value.trim(),
+            author: document.getElementById('book-author').value.trim(),
+            isbn: document.getElementById('book-isbn').value.trim()
+        };
+
+        const method = editingBookId ? 'PUT' : 'POST';
+        const url = editingBookId ? `/api/books/${editingBookId}` : '/api/books';
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(bookData)
+            });
+
+            if (response.status === 409) {
+                // Show the duplicate book message in the modal window
+                document.getElementById('error-message').style.display = 'block';
+            } else if (response.ok) {
+                window.location.reload();
+            } else if (response.status === 500) {
+                alert('An error occurred while saving the book. Please try again later.');
+            } else {
+                console.error('Failed to save book');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+        }
+    });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "test_environment": "qa",
+  "browser": {
+    "headless": false,
+    "window_size": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "file_path": "logs/test_logs.log"
+  }
+}
