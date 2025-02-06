@@ -10,6 +10,13 @@ import os
 import json
 import subprocess
 import re
+import sys
+
+# Add the project root to Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+    print(f"Added {project_root} to Python path")
 
 
 def get_chrome_version():
@@ -25,20 +32,21 @@ def get_chrome_version():
             output = subprocess.check_output(cmd, shell=True).decode()
             version = re.search(r"\d+\.\d+\.\d+\.\d+", output).group(0)
             return version
-    except:
+    except Exception as e:
+        print(f"Failed to get Chrome version: {str(e)}")
         return None
 
 
 @pytest.fixture(scope="session")
 def config():
-    config_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'config', 'qa_config.json')
+    config_path = os.path.join(project_root, 'config', 'qa_config.json')
     print(f"Loading config from: {config_path}")
     with open(config_path) as config_file:
         config = json.load(config_file)
 
     # Force headless mode if CI environment is detected
     is_ci = os.environ.get('CI', 'false').lower() == 'true'
-    config['browser']['headless'] = is_ci
+    config['browser']['headless'] = True if is_ci else False
     print(f"CI Environment detected: {is_ci}, Headless mode: {config['browser']['headless']}")
     return config
 
@@ -48,41 +56,36 @@ def driver(config):
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()
     headless = config['browser']['headless']
 
-    print(f"Running tests on {browser} with headless={headless}")
+    print(f"Setting up {browser} driver with headless={headless}")
 
     try:
         if browser == "chrome":
             options = ChromeOptions()
 
-            # Force headless mode in CI environment
-            if os.environ.get('CI', 'false').lower() == 'true':
-                print("CI environment detected, forcing headless mode")
+            # Force headless mode
+            if headless:
+                print("Setting up Chrome in headless mode")
                 options.add_argument("--headless=new")
                 options.add_argument("--disable-gpu")
-            elif headless:
-                options.add_argument("--headless=new")
 
             # Common Chrome options for stability
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--window-size=1920,1080")
             options.add_argument("--disable-extensions")
-            options.add_argument("--proxy-server='direct://'")
-            options.add_argument("--proxy-bypass-list=*")
-            options.add_argument("--start-maximized")
 
-            # Get Chrome version and install matching driver
             chrome_ver = get_chrome_version()
-            if chrome_ver:
-                print(f"Detected Chrome version: {chrome_ver}")
+            print(f"Detected Chrome version: {chrome_ver}")
 
             driver_path = ChromeDriverManager().install()
+            print(f"ChromeDriver installed at: {driver_path}")
+
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
 
         elif browser == "firefox":
             options = FirefoxOptions()
-            if headless or os.environ.get('CI', 'false').lower() == 'true':
+            if headless:
                 options.add_argument("--headless")
             driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
         else:
@@ -98,6 +101,26 @@ def driver(config):
     except Exception as e:
         print(f"WebDriver setup failed: {str(e)}")
         raise RuntimeError(f"WebDriver initialization error: {str(e)}")
+
+
+@pytest.fixture
+def logged_in_driver(driver):
+    """Fixture for logged-in driver that depends on the base driver fixture."""
+    print("Setting up logged_in_driver fixture")
+    from project1.pages.login_page import LoginPage
+    from project1.constant import VALID_USER, VALID_PASSWORD
+    from project1.config.config import TestConfig
+
+    print(f"Navigating to login page: {TestConfig.BASE_URL}/login")
+    driver.get(f"{TestConfig.BASE_URL}/login")
+
+    login_page = LoginPage(driver)
+    login_page.login(VALID_USER, VALID_PASSWORD)
+
+    assert login_page.is_logged_in(), "Expected to be logged in but failed"
+    print("Successfully logged in")
+
+    return driver
 
 
 @pytest.fixture
