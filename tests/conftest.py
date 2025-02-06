@@ -53,6 +53,9 @@ def driver(config):
                 # Local environment - use the latest version
                 driver_path = ChromeDriverManager().install()
 
+            # Print the ChromeDriver installation path
+            print(f"ChromeDriver installed at: {ChromeDriverManager().install()}")
+
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
             return driver
