@@ -53,10 +53,13 @@ def driver(config):
 
                 if chrome_version_output:
                     version = chrome_version_output.strip()
-                    driver_path = ChromeDriverManager(version=version).install()
-                else:
-                    print("Failed to retrieve Chrome version. Using latest ChromeDriver.")
-                    driver_path = ChromeDriverManager().install()
+                    try:
+                        # Try to install the specific version of ChromeDriver
+                        driver_path = ChromeDriverManager(version=version).install()
+                    except ValueError as e:
+                        print(f"Failed to retrieve ChromeDriver for version {version}: {e}")
+                        print("Falling back to latest ChromeDriver version.")
+                        driver_path = ChromeDriverManager().install()
 
             else:
                 # Local environment - use the latest version
