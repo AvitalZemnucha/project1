@@ -18,10 +18,8 @@ def config():
     with open(config_path) as config_file:
         config = json.load(config_file)
 
-    if os.environ.get('CI', '') == 'true':
-        config['browser']['headless'] = True
-    else:
-        config['browser']['headless'] = False
+    # Override headless mode based on CI environment
+    config['browser']['headless'] = os.environ.get('CI', '') == 'true'
 
     return config
 
@@ -29,24 +27,28 @@ def config():
 @pytest.fixture
 def driver(config):
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()
-    headless = os.environ.get('CI', '') == 'true'
+    headless = config['browser']['headless']
 
     print(f"Running tests on {browser} with headless={headless}")
 
     if browser == "chrome":
         options = ChromeOptions()
         if headless:
-            options.add_argument("--headless")
+            options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
 
         try:
             if os.environ.get('CI', '') == 'true':
-                # Jenkins environment - use the installed Chrome version
-                chrome_version_output = read_version_from_cmd("chrome --version")
-                version = chrome_version_output.split()[2]  # Extract version number
-                driver_path = ChromeDriverManager(version=version).install()
+                # Jenkins environment - get Chrome version installed
+                try:
+                    chrome_version_output = read_version_from_cmd("google-chrome --version", r"(\d+\.\d+\.\d+\.\d+)")
+                    version = chrome_version_output.strip()
+                    driver_path = ChromeDriverManager(version=version).install()
+                except Exception as e:
+                    print(f"Failed to retrieve Chrome version: {e}, using latest ChromeDriver.")
+                    driver_path = ChromeDriverManager().install()
             else:
                 # Local environment - use the latest version
                 driver_path = ChromeDriverManager().install()
