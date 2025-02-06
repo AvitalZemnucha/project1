@@ -15,18 +15,16 @@ import re
 def get_chrome_version():
     """Get the installed Chrome version."""
     try:
-        # For Windows
         if os.name == 'nt':
             cmd = r'reg query "HKEY_CURRENT_USER\Software\Google\Chrome\BLBeacon" /v version'
             output = subprocess.check_output(cmd, shell=True).decode()
             version = re.search(r"\d+\.\d+\.\d+\.\d+", output).group(0)
-            return version  # Return full version
-        # For Linux
+            return version
         else:
             cmd = 'google-chrome --version'
             output = subprocess.check_output(cmd, shell=True).decode()
             version = re.search(r"\d+\.\d+\.\d+\.\d+", output).group(0)
-            return version  # Return full version
+            return version
     except:
         return None
 
@@ -38,8 +36,10 @@ def config():
     with open(config_path) as config_file:
         config = json.load(config_file)
 
-    # Set headless mode based on CI environment
-    config['browser']['headless'] = os.environ.get('CI', 'false').lower() == 'true'
+    # Force headless mode if CI environment is detected
+    is_ci = os.environ.get('CI', 'false').lower() == 'true'
+    config['browser']['headless'] = is_ci
+    print(f"CI Environment detected: {is_ci}, Headless mode: {config['browser']['headless']}")
     return config
 
 
@@ -53,11 +53,16 @@ def driver(config):
     try:
         if browser == "chrome":
             options = ChromeOptions()
-            if headless:
+
+            # Force headless mode in CI environment
+            if os.environ.get('CI', 'false').lower() == 'true':
+                print("CI environment detected, forcing headless mode")
+                options.add_argument("--headless=new")
+                options.add_argument("--disable-gpu")
+            elif headless:
                 options.add_argument("--headless=new")
 
             # Common Chrome options for stability
-            options.add_argument("--disable-gpu")
             options.add_argument("--no-sandbox")
             options.add_argument("--disable-dev-shm-usage")
             options.add_argument("--window-size=1920,1080")
@@ -70,53 +75,29 @@ def driver(config):
             chrome_ver = get_chrome_version()
             if chrome_ver:
                 print(f"Detected Chrome version: {chrome_ver}")
-                # Use the driver manager's cache_manager to find the right version
-                driver_path = ChromeDriverManager().install()
-            else:
-                print("Could not detect Chrome version, using latest ChromeDriver")
-                driver_path = ChromeDriverManager().install()
 
+            driver_path = ChromeDriverManager().install()
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
 
         elif browser == "firefox":
             options = FirefoxOptions()
-            if headless:
+            if headless or os.environ.get('CI', 'false').lower() == 'true':
                 options.add_argument("--headless")
             driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
         else:
             raise ValueError(f"Unsupported browser: {browser}")
 
-        # Set implicit wait and page load timeout
         driver.implicitly_wait(10)
         driver.set_page_load_timeout(30)
 
         yield driver
 
-        # Quit driver after test
         driver.quit()
 
     except Exception as e:
         print(f"WebDriver setup failed: {str(e)}")
         raise RuntimeError(f"WebDriver initialization error: {str(e)}")
-
-
-@pytest.fixture
-def logged_in_driver(driver):
-    from project1.pages.login_page import LoginPage
-    from project1.constant import VALID_USER, VALID_PASSWORD
-    from project1.config.config import TestConfig
-
-    driver.get(f"{TestConfig.BASE_URL}/login")
-    login_page = LoginPage(driver)
-    login_page.login(VALID_USER, VALID_PASSWORD)
-
-    assert login_page.is_logged_in(), "Expected to be logged in but failed"
-
-    return driver
-
-
-# Your other fixtures remain the same
 
 
 @pytest.fixture
