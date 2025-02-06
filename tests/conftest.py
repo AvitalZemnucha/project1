@@ -41,20 +41,26 @@ def driver(config):
 
         try:
             if os.environ.get('CI', '') == 'true':
-                # Jenkins environment - get Chrome version installed
-                try:
+                # Jenkins environment - try fetching the version differently
+                if os.name == 'nt':  # For Windows systems
+                    chrome_version_output = read_version_from_cmd(
+                        '"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --version',
+                        r"(\d+\.\d+\.\d+\.\d+)")
+                elif os.name == 'posix':  # For Linux/macOS
                     chrome_version_output = read_version_from_cmd("google-chrome --version", r"(\d+\.\d+\.\d+\.\d+)")
+                else:
+                    chrome_version_output = None
+
+                if chrome_version_output:
                     version = chrome_version_output.strip()
                     driver_path = ChromeDriverManager(version=version).install()
-                except Exception as e:
-                    print(f"Failed to retrieve Chrome version: {e}, using latest ChromeDriver.")
+                else:
+                    print("Failed to retrieve Chrome version. Using latest ChromeDriver.")
                     driver_path = ChromeDriverManager().install()
+
             else:
                 # Local environment - use the latest version
                 driver_path = ChromeDriverManager().install()
-
-            # Print the ChromeDriver installation path
-            print(f"ChromeDriver installed at: {ChromeDriverManager().install()}")
 
             service = ChromeService(driver_path)
             driver = webdriver.Chrome(service=service, options=options)
