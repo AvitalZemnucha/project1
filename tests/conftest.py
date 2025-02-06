@@ -28,6 +28,7 @@ def config():
 def driver(config):
     browser = os.environ.get('BROWSER', 'chrome').strip().lower()
     headless = config['browser']['headless']
+    driver_path = None  # Initialize the driver_path variable here
 
     print(f"Running tests on {browser} with headless={headless}")
 
@@ -60,28 +61,23 @@ def driver(config):
                         print(f"Failed to retrieve ChromeDriver for version {version}: {e}")
                         print("Falling back to latest ChromeDriver version.")
                         driver_path = ChromeDriverManager().install()
-
+                else:
+                    # Fall back to the latest ChromeDriver version
+                    driver_path = ChromeDriverManager().install()
             else:
                 # Local environment - use the latest version
                 driver_path = ChromeDriverManager().install()
 
-            service = ChromeService(driver_path)
-            driver = webdriver.Chrome(service=service, options=options)
-            return driver
+            if driver_path:  # Ensure driver_path is valid
+                service = ChromeService(driver_path)
+                driver = webdriver.Chrome(service=service, options=options)
+                return driver
+            else:
+                raise RuntimeError("Failed to retrieve ChromeDriver.")
 
         except Exception as e:
             print(f"ChromeDriver setup failed: {str(e)}")
             raise RuntimeError(f"Chrome WebDriver initialization error: {str(e)}")
-
-    elif browser == "firefox":
-        options = FirefoxOptions()
-        if headless:
-            options.add_argument("--headless")
-        driver = webdriver.Firefox(service=FirefoxService(GeckoDriverManager().install()), options=options)
-        return driver
-
-    else:
-        raise ValueError(f"Unsupported browser: {browser}")
 
 
 @pytest.fixture
