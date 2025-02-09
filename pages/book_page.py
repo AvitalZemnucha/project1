@@ -1,3 +1,5 @@
+import time
+
 from selenium.common import TimeoutException
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
@@ -108,7 +110,21 @@ class BookPage:
         return books
 
     def is_duplicated_message(self):
-        WebDriverWait(self.driver, TestConfig.EXPLICIT_WAIT).until(EC.presence_of_element_located(self.book_alert))
-        message = WebDriverWait(self.driver, 20).until(
-            EC.visibility_of_element_located(self.book_alert))
-        return message.text
+        try:
+            # First wait for presence
+            self.wait.until(EC.presence_of_element_located(self.book_alert))
+
+            # Then wait for visibility with a longer timeout
+            message = WebDriverWait(self.driver, 30).until(
+                EC.visibility_of_element_located(self.book_alert)
+            )
+
+            # Add a small delay to ensure the message is fully loaded
+            time.sleep(1)
+
+            return message.text
+        except TimeoutException as e:
+            # Log the page source and state when the timeout occurs
+            print(f"Page source at time of failure: {self.driver.page_source}")
+            print(f"Current URL: {self.driver.current_url}")
+            raise
