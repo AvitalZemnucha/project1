@@ -108,8 +108,7 @@ class BookPage:
         return books
 
     def is_duplicated_message(self):
-        # message = WebDriverWait(self.driver, TestConfig.EXPLICIT_WAIT).until(
-        #     EC.visibility_of_element_located(self.book_alert))
+        WebDriverWait(self.driver, TestConfig.EXPLICIT_WAIT).until(EC.presence_of_element_located(self.book_alert))
         message = WebDriverWait(self.driver, 20).until(
             EC.visibility_of_element_located(self.book_alert))
         return message.text
