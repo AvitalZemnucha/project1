@@ -89,7 +89,7 @@ def test_duplicate_book(logged_in_driver):
     book_page.add_book(random_title, random_author, random_isbn)
     print(f"second time = random title: {random_title}, random_author:{random_author}, random_isbn:{random_isbn}")
     book_page.book_save()
-    # time.sleep(2)
+    time.sleep(2)
     alert_text = book_page.is_duplicated_message()
     assert alert_text is not None, "Expected an alert, but none was found!"
     assert "Duplicate book detected! The book is already in the list." == alert_text, f"Unexpected alert text: {alert_text}"

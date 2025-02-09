@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, abort
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import re
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key'
@@ -103,8 +104,19 @@ def books():
 
 @app.route('/logout')
 def logout():
+    # Check if the user is logged in
+    if 'user_id' not in session:
+        return jsonify({"error": "You are not logged in"}), 403  # Reject if no session exists
+
+    # Ensure the session cookie is sent in the request
+    if "session" not in request.cookies:
+        return jsonify({"error": "Session cookie missing"}), 403
+
+    # Remove session and return response
     session.pop('user_id', None)
-    return redirect(url_for('login'))
+    response = jsonify({"message": "Logged out successfully"})
+    response.set_cookie('session', '', expires=0)  # Clears the session cookie
+    return response
 
 
 # API Routes
@@ -145,6 +157,10 @@ def search_books():
     elif field == 'isbn':
         books = books_query.filter(Book.isbn.ilike(f'%{query}%')).all()
 
+    # **Fix: Return error if no books are found**
+    if not books:
+        return jsonify({'error': 'No books found matching the search criteria'}), 400
+
     return jsonify([{
         'id': book.id,
         'title': book.title,
@@ -166,6 +182,9 @@ def get_book(book_id):
     }), 200
 
 
+import re
+
+
 @app.route('/api/books', methods=['POST'])
 def add_book():
     data = request.get_json()
@@ -176,15 +195,37 @@ def add_book():
     if missing_fields:
         return jsonify({'error': f"Missing or empty required fields: {', '.join(missing_fields)}"}), 400
 
+    # Check for duplicate ISBN
     existing_book = Book.query.filter_by(isbn=data['isbn']).first()
     if existing_book:
         return jsonify({'error': 'Duplicate book detected! The book is already in the list.'}), 409
 
     try:
+        # Title, author, and ISBN must not be empty or whitespace only
+        title = data['title'].strip()
+        author = data['author'].strip()
+        isbn = data['isbn'].strip()
+
+        if not title or not author or not isbn:
+            return jsonify({'error': 'Title, Author, or ISBN cannot be empty or whitespace only.'}), 400
+
+        # Check for special characters in title
+        if not re.match("^[a-zA-Z0-9\s]*$", title):  # Only alphanumeric and space allowed
+            return jsonify({
+                'error': 'Title contains special characters, only alphanumeric characters and spaces are allowed.'}), 400
+
+        # Check if author contains numbers
+        if re.search(r'\d', author):  # If any digit is found in author name
+            return jsonify({'error': 'Author name cannot contain numbers.'}), 400
+
+        # Validate ISBN (should only contain digits and be 10 or 13 characters long)
+        if not re.match(r'^\d{10}(\d{3})?$', isbn):  # Matches 10 or 13 digit ISBN
+            return jsonify({'error': 'ISBN must be numeric and either 10 or 13 digits long.'}), 400
+
         new_book = Book(
-            title=data['title'].strip(),
-            author=data['author'].strip(),
-            isbn=data['isbn'].strip()
+            title=title,
+            author=author,
+            isbn=isbn
         )
         db.session.add(new_book)
         db.session.commit()
@@ -203,38 +244,81 @@ def add_book():
 
 @app.route('/api/books/<int:book_id>', methods=['PUT'])
 def update_book(book_id):
+    app.logger.info(f"Received PUT request for book ID {book_id}")
+    app.logger.info(f"Request headers: {dict(request.headers)}")
+
+    # Ensure we have JSON data
+    if not request.is_json:
+        app.logger.error("Request does not contain JSON data")
+        return jsonify({'error': 'Content-Type must be application/json'}), 400
+
+    # Parse the incoming JSON data
+    try:
+        data = request.get_json()
+        app.logger.info(f"Request data: {data}")
+    except Exception as e:
+        app.logger.error(f"Error parsing JSON data: {e}")
+        return jsonify({'error': 'Invalid JSON format'}), 400
+
+    # Simulate an internal server error for testing
+    if data.get('title', '').lower() == 'trigger_error':
+        app.logger.error("Intentional internal server error triggered")
+        return jsonify({"error": "This is a simulated internal server error"}), 500
+
+    # Fetch the book by ID
     book = Book.query.get(book_id)
     if not book:
+        app.logger.error(f"Book with ID {book_id} not found")
         return jsonify({'error': 'Book not found'}), 404
 
-    data = request.get_json()
-
+    # Validate required fields (ensure they exist in request data)
     required_fields = ['title', 'author', 'isbn']
-    missing_fields = [field for field in required_fields if field not in data or not data[field].strip()]
+    missing_fields = [field for field in required_fields if field not in data]
 
     if missing_fields:
-        return jsonify({'error': f"Missing or empty required fields: {', '.join(missing_fields)}"}), 400
+        error_message = f"Missing required fields: {', '.join(missing_fields)}"
+        app.logger.error(error_message)
+        return jsonify({'error': error_message}), 400
 
+    # Strip values and check for empty fields
+    title = data['title'].strip()
+    author = data['author'].strip()
+    isbn = data['isbn'].strip()
+
+    empty_fields = [field for field in required_fields if not data[field].strip()]
+    if empty_fields:
+        error_message = f"Missing or empty required fields: {', '.join(empty_fields)}"
+        app.logger.error(error_message)
+        return jsonify({'error': error_message}), 400
+
+    # Check for conflicts with other books
     errors = []
-    if Book.query.filter(Book.title == data['title'].strip(), Book.id != book_id).first():
+
+    # Title conflict check
+    if Book.query.filter(Book.title == title, Book.id != book_id).first():
         errors.append("A book with this title already exists")
-    if Book.query.filter(Book.author == data['author'].strip(), Book.id != book_id).first():
+
+    # Author conflict check
+    if Book.query.filter(Book.author == author, Book.id != book_id).first():
         errors.append("A book by this author already exists")
-    if Book.query.filter(Book.isbn == data['isbn'].strip(), Book.id != book_id).first():
+
+    # ISBN conflict check
+    if Book.query.filter(Book.isbn == isbn, Book.id != book_id).first():
         errors.append("A book with this ISBN already exists")
 
+    # If any conflicts exist, return all errors with a 409 status
     if errors:
+        app.logger.info(f"Validation errors found: {errors}")
         return jsonify({'errors': errors}), 409
 
+    # Update the book record
     try:
-        if data['title'].lower() == 'error':
-            raise ValueError("Intentional error for testing")
-
-        book.title = data['title'].strip()
-        book.author = data['author'].strip()
-        book.isbn = data['isbn'].strip()
+        book.title = title
+        book.author = author
+        book.isbn = isbn
         db.session.commit()
 
+        app.logger.info(f"Successfully updated book {book_id}")
         return jsonify({
             'id': book.id,
             'title': book.title,
@@ -242,11 +326,9 @@ def update_book(book_id):
             'isbn': book.isbn
         }), 200
 
-    except ValueError as ve:
-        db.session.rollback()
-        return jsonify({'error': str(ve)}), 500
     except Exception as e:
         db.session.rollback()
+        app.logger.error(f"Error updating book: {str(e)}")
         return jsonify({'error': 'An unexpected error occurred'}), 500
 
 
@@ -270,6 +352,13 @@ def not_found_error(error):
     if request.path.startswith('/api/'):
         return jsonify({"error": "Resource not found"}), 404
     return render_template('404.html'), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "An unexpected error occurred"}), 500
+    return render_template('500.html'), 500
 
 
 if __name__ == '__main__':
