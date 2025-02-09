@@ -111,20 +111,28 @@ class BookPage:
 
     def is_duplicated_message(self):
         try:
-            # First wait for presence
+            # Wait for presence of the element (this is a quick check)
             self.wait.until(EC.presence_of_element_located(self.book_alert))
 
-            # Then wait for visibility with a longer timeout
-            message = WebDriverWait(self.driver, 30).until(
+            # Then wait for visibility with a longer timeout (more robust)
+            message = WebDriverWait(self.driver, TestConfig.EXPLICIT_WAIT).until(  # Use EXPLICIT_WAIT
                 EC.visibility_of_element_located(self.book_alert)
             )
 
-            # Add a small delay to ensure the message is fully loaded
-            time.sleep(1)
+            # Use a different approach to get the text to avoid stale element issues
+            alert_text = message.get_attribute('textContent')  # Use textContent instead of .text
 
-            return message.text
+            print(f"Duplicate message found: {alert_text}")  # Log the message
+
+            return alert_text
+
         except TimeoutException as e:
-            # Log the page source and state when the timeout occurs
+            # Log helpful information for debugging
+            print(f"TimeoutException in is_duplicated_message: {e}")
             print(f"Page source at time of failure: {self.driver.page_source}")
             print(f"Current URL: {self.driver.current_url}")
-            raise
+
+            # Consider taking a screenshot for debugging in Jenkins
+            self.driver.save_screenshot("is_duplicated_message_timeout.png")  # Save screenshot
+
+            raise  # Re-raise the exception after logging
